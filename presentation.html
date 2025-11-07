@@ -1,0 +1,714 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Deepfake Detection System</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Inter', 'Segoe UI', sans-serif;
+            background: #0a0e27;
+            color: #fff;
+            overflow: hidden;
+        }
+
+        .presentation-container {
+            width: 100vw;
+            height: 100vh;
+            position: relative;
+        }
+
+        .slide {
+            width: 100%;
+            height: 100%;
+            display: none;
+            position: absolute;
+            padding: 3rem;
+            animation: fadeIn 0.6s ease;
+        }
+
+        .slide.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .slide-content {
+            max-width: 1400px;
+            margin: 0 auto;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+        }
+
+        h1 {
+            font-size: 5rem;
+            font-weight: 800;
+            margin-bottom: 1rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+        }
+
+        h2 {
+            font-size: 3.5rem;
+            font-weight: 700;
+            margin-bottom: 3rem;
+            color: #fff;
+        }
+
+        h3 {
+            font-size: 2rem;
+            margin-bottom: 1.5rem;
+            color: #667eea;
+        }
+
+        .subtitle {
+            font-size: 2rem;
+            color: #a0aec0;
+            margin-bottom: 3rem;
+            font-weight: 300;
+        }
+
+        .grid-2 {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 3rem;
+            align-items: center;
+        }
+
+        .grid-3 {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 2rem;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            padding: 2rem;
+            backdrop-filter: blur(10px);
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            border-color: #667eea;
+        }
+
+        .image-container {
+            position: relative;
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+        }
+
+        .image-label {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            padding: 10px 20px;
+            border-radius: 10px;
+            font-weight: 600;
+            font-size: 1.2rem;
+            z-index: 10;
+        }
+
+        .real-label {
+            background: rgba(67, 233, 123, 0.9);
+            color: #000;
+        }
+
+        .fake-label {
+            background: rgba(250, 112, 154, 0.9);
+            color: #fff;
+        }
+
+        .placeholder-img {
+            width: 100%;
+            height: 400px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 3rem;
+            border-radius: 15px;
+        }
+
+        .stat-box {
+            text-align: center;
+            padding: 2rem;
+        }
+
+        .stat-number {
+            font-size: 4rem;
+            font-weight: 800;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-label {
+            font-size: 1.2rem;
+            color: #a0aec0;
+        }
+
+        .tech-badge {
+            display: inline-block;
+            background: rgba(102, 126, 234, 0.2);
+            border: 2px solid #667eea;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            margin: 0.5rem;
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+
+        .controls {
+            position: fixed;
+            bottom: 2rem;
+            right: 2rem;
+            display: flex;
+            gap: 1rem;
+            z-index: 1000;
+        }
+
+        .slide-nav {
+            position: fixed;
+            bottom: 2rem;
+            left: 2rem;
+            color: #a0aec0;
+            font-size: 1.2rem;
+            z-index: 1000;
+        }
+
+        button {
+            background: rgba(102, 126, 234, 0.2);
+            color: white;
+            border: 2px solid #667eea;
+            padding: 1rem 2rem;
+            border-radius: 50px;
+            font-size: 1rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            font-weight: 600;
+        }
+
+        button:hover:not(:disabled) {
+            background: #667eea;
+            transform: translateY(-2px);
+        }
+
+        button:disabled {
+            opacity: 0.3;
+            cursor: not-allowed;
+        }
+
+        .feature-list {
+            list-style: none;
+            font-size: 1.3rem;
+            line-height: 2.2;
+        }
+
+        .feature-list li:before {
+            content: "▸";
+            color: #667eea;
+            font-weight: bold;
+            margin-right: 1rem;
+        }
+
+        .workflow-step {
+            background: rgba(102, 126, 234, 0.1);
+            border-left: 4px solid #667eea;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            border-radius: 10px;
+        }
+
+        .workflow-step h4 {
+            color: #667eea;
+            margin-bottom: 0.5rem;
+            font-size: 1.5rem;
+        }
+
+        .workflow-step p {
+            color: #a0aec0;
+            font-size: 1.1rem;
+        }
+
+        .pros-cons-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .pros-box {
+            background: rgba(67, 233, 123, 0.1);
+            border: 2px solid rgba(67, 233, 123, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .cons-box {
+            background: rgba(250, 112, 154, 0.1);
+            border: 2px solid rgba(250, 112, 154, 0.3);
+            border-radius: 15px;
+            padding: 2rem;
+        }
+
+        .contact-section {
+            margin-top: 3rem;
+            text-align: center;
+        }
+
+        .contact-links {
+            display: flex;
+            justify-content: center;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .contact-link {
+            color: #667eea;
+            text-decoration: none;
+            font-size: 1.2rem;
+            transition: transform 0.3s ease;
+            display: inline-block;
+        }
+
+        .contact-link:hover {
+            transform: scale(1.1);
+        }
+
+        .heatmap-container {
+            background: rgba(255, 255, 255, 0.05);
+            border-radius: 15px;
+            padding: 2rem;
+            text-align: center;
+        }
+
+        .heatmap-placeholder {
+            width: 100%;
+            height: 300px;
+            background: linear-gradient(to right, #0066ff, #ff6b00, #ff0000);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            margin-top: 1rem;
+        }
+
+        @media (max-width: 768px) {
+            h1 { font-size: 3rem; }
+            h2 { font-size: 2rem; }
+            .grid-2, .grid-3, .pros-cons-grid { grid-template-columns: 1fr; }
+        }
+    </style>
+</head>
+<body>
+    <div class="presentation-container">
+        
+        <!-- Slide 1: Title -->
+        <div class="slide active">
+            <div class="slide-content">
+                <h1>Deepfake Detection System</h1>
+                <p class="subtitle">AI-Powered Image Authentication using ResNeXt-50</p>
+                <div style="margin-top: 3rem;">
+                    <span class="tech-badge">PyTorch</span>
+                    <span class="tech-badge">ResNeXt-50</span>
+                    <span class="tech-badge">Deep Learning</span>
+                    <span class="tech-badge">Flask API</span>
+                </div>
+                <div style="margin-top: 4rem; display: flex; justify-content: center; gap: 5rem;">
+                    <div class="stat-box">
+                        <div class="stat-number">99.89%</div>
+                        <div class="stat-label">Training Accuracy</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">60K+</div>
+                        <div class="stat-label">Training Images</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">&lt;2s</div>
+                        <div class="stat-label">Inference Time</div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 2: What is Deepfake -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>What is a Deepfake?</h2>
+                <div class="grid-2">
+                    <div>
+                        <div class="card" style="height: 100%;">
+                            <h3>Definition</h3>
+                            <p style="font-size: 1.3rem; line-height: 2; color: #a0aec0;">Synthetic media created using <span style="color: #667eea; font-weight: 600;">deep learning</span> and <span style="color: #667eea; font-weight: 600;">Generative Adversarial Networks (GANs)</span> to manipulate or generate realistic fake images, videos, or audio.</p>
+                            <div style="margin-top: 2rem; padding-top: 2rem; border-top: 1px solid rgba(255,255,255,0.1);">
+                                <h3>The Problem</h3>
+                                <ul class="feature-list" style="font-size: 1.1rem; margin-top: 1rem;">
+                                    <li>Misinformation campaigns</li>
+                                    <li>Financial fraud ($243M+ stolen)</li>
+                                    <li>Identity theft & harassment</li>
+                                    <li>Undermining media trust</li>
+                                </ul>
+                            </div>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="placeholder-img">
+                            <div style="text-align: center;">
+                                <div style="font-size: 5rem; margin-bottom: 1rem;">🎭</div>
+                                <div style="font-size: 1.5rem;">Deepfake Technology</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 3: Visual Example - Real vs Fake -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>Real vs Deepfake: Visual Comparison</h2>
+                <div class="grid-2" style="margin-top: 2rem;">
+                    <div class="image-container">
+                        <div class="image-label real-label">✓ REAL IMAGE</div>
+                        <img src="https://i.postimg.cc/wBqC7tRy/real-example.jpg" alt="Real face" style="width: 100%; height: 400px; object-fit: cover; border-radius: 15px;">
+                    </div>
+                    <div class="image-container">
+                        <div class="image-label fake-label">✗ DEEPFAKE</div>
+                        <img src="https://i.postimg.cc/MKqHxW8L/fake-example.jpg" alt="Fake face" style="width: 100%; height: 400px; object-fit: cover; border-radius: 15px;">
+                    </div>
+                </div>
+                <p style="text-align: center; margin-top: 2rem; font-size: 1.2rem; color: #a0aec0;">
+                    Can you tell the difference? Our AI model can detect subtle artifacts invisible to human eyes
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 4: Types of Deepfakes -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>Types of Deepfake Techniques</h2>
+                <div class="grid-3">
+                    <div class="card">
+                        <div style="font-size: 3rem; text-align: center; margin-bottom: 1rem;">👥</div>
+                        <h3 style="text-align: center;">Face Swap</h3>
+                        <p style="text-align: center; color: #a0aec0;">Replacing one person's face with another</p>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 3rem; text-align: center; margin-bottom: 1rem;">🎭</div>
+                        <h3 style="text-align: center;">Reenactment</h3>
+                        <p style="text-align: center; color: #a0aec0;">Transferring expressions and movements</p>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 3rem; text-align: center; margin-bottom: 1rem;">✨</div>
+                        <h3 style="text-align: center;">Attribute Edit</h3>
+                        <p style="text-align: center; color: #a0aec0;">Changing age, gender, or features</p>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 3rem; text-align: center; margin-bottom: 1rem;">🎨</div>
+                        <h3 style="text-align: center;">Full Synthesis</h3>
+                        <p style="text-align: center; color: #a0aec0;">Creating entirely fake people (StyleGAN)</p>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 3rem; text-align: center; margin-bottom: 1rem;">💋</div>
+                        <h3 style="text-align: center;">Lip Sync</h3>
+                        <p style="text-align: center; color: #a0aec0;">Matching mouth to different audio</p>
+                    </div>
+                    <div class="card">
+                        <div style="font-size: 3rem; text-align: center; margin-bottom: 1rem;">🔊</div>
+                        <h3 style="text-align: center;">Voice Clone</h3>
+                        <p style="text-align: center; color: #a0aec0;">Replicating someone's voice</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 5: Our Solution -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>Our Solution: ResNeXt-50 Architecture</h2>
+                <div class="grid-2">
+                    <div>
+                        <div class="card">
+                            <h3>Why ResNeXt-50?</h3>
+                            <ul class="feature-list">
+                                <li><strong>50 Layers</strong> - Deep hierarchical learning</li>
+                                <li><strong>Cardinality</strong> - 32 parallel feature paths</li>
+                                <li><strong>Residual Connections</strong> - Better gradient flow</li>
+                                <li><strong>Pre-trained</strong> - ImageNet transfer learning</li>
+                                <li><strong>Efficient</strong> - Better accuracy than ResNet-50</li>
+                            </ul>
+                        </div>
+                        <div class="card" style="margin-top: 2rem;">
+                            <h3>Training Details</h3>
+                            <ul class="feature-list">
+                                <li>60,000+ images (50/50 real/fake split)</li>
+                                <li>Adam optimizer, 0.0001 learning rate</li>
+                                <li>Data augmentation for robustness</li>
+                                <li>99.89% training accuracy achieved</li>
+                            </ul>
+                        </div>
+                    </div>
+                    <div>
+                        <div class="placeholder-img" style="height: 100%;">
+                            <div style="text-align: center;">
+                                <div style="font-size: 4rem; margin-bottom: 1rem;">🧠</div>
+                                <div style="font-size: 1.8rem; font-weight: 600;">ResNeXt-50</div>
+                                <div style="font-size: 1.2rem; margin-top: 1rem; opacity: 0.8;">Architecture Diagram</div>
+                                <div style="font-size: 1rem; margin-top: 2rem; opacity: 0.6;">Input → Conv Layers → Residual Blocks<br>→ Feature Extraction → Classification</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 6: How It Works -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>Detection Pipeline</h2>
+                <div class="workflow-step">
+                    <h4>1. Image Upload</h4>
+                    <p>User uploads image through web interface</p>
+                </div>
+                <div class="workflow-step">
+                    <h4>2. Preprocessing</h4>
+                    <p>Resize to 224x224, normalize with ImageNet stats</p>
+                </div>
+                <div class="workflow-step">
+                    <h4>3. Feature Extraction</h4>
+                    <p>ResNeXt-50 extracts deep features through 50 layers</p>
+                </div>
+                <div class="workflow-step">
+                    <h4>4. Classification</h4>
+                    <p>Binary classifier outputs Real/Fake with confidence score</p>
+                </div>
+                <div class="workflow-step">
+                    <h4>5. Results Display</h4>
+                    <p>User sees prediction with confidence percentage</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 7: Heatmap Visualization -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>Model Attention: Activation Heatmaps</h2>
+                <p style="text-align: center; margin-bottom: 2rem; font-size: 1.2rem; color: #a0aec0;">
+                    Heatmaps show which regions the model focuses on to detect deepfakes
+                </p>
+                
+                <!-- Example 1: FAKE Detection -->
+                <div class="card" style="margin-bottom: 2rem;">
+                    <h3 style="color: #fa709a; margin-bottom: 1.5rem;">FAKE Detection Example (100.0%)</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; align-items: center;">
+                        <div style="text-align: center;">
+                            <p style="color: #a0aec0; margin-bottom: 1rem; font-size: 1.1rem;">Original Image</p>
+                            <img src="https://i.postimg.cc/XYqL8KG7/fake-original.jpg" alt="Original fake" style="width: 100%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                        </div>
+                        <div style="text-align: center;">
+                            <p style="color: #a0aec0; margin-bottom: 1rem; font-size: 1.1rem;">Activation Map</p>
+                            <img src="https://i.postimg.cc/zfqGBj5Y/fake-heatmap.jpg" alt="Fake heatmap" style="width: 100%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                        </div>
+                        <div style="text-align: center;">
+                            <p style="color: #a0aec0; margin-bottom: 1rem; font-size: 1.1rem;">Overlay</p>
+                            <img src="https://i.postimg.cc/FsqRN6jf/fake-overlay.jpg" alt="Fake overlay" style="width: 100%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Example 2: REAL Detection -->
+                <div class="card">
+                    <h3 style="color: #43e97b; margin-bottom: 1.5rem;">REAL Detection Example (100.0%)</h3>
+                    <div style="display: grid; grid-template-columns: repeat(3, 1fr); gap: 2rem; align-items: center;">
+                        <div style="text-align: center;">
+                            <p style="color: #a0aec0; margin-bottom: 1rem; font-size: 1.1rem;">Original Image</p>
+                            <img src="https://i.postimg.cc/52fZm3gQ/real-original.jpg" alt="Original real" style="width: 100%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                        </div>
+                        <div style="text-align: center;">
+                            <p style="color: #a0aec0; margin-bottom: 1rem; font-size: 1.1rem;">Activation Map</p>
+                            <img src="https://i.postimg.cc/NGK9KNLK/real-heatmap.jpg" alt="Real heatmap" style="width: 100%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                        </div>
+                        <div style="text-align: center;">
+                            <p style="color: #a0aec0; margin-bottom: 1rem; font-size: 1.1rem;">Overlay</p>
+                            <img src="https://i.postimg.cc/wBqC7tRy/real-overlay.jpg" alt="Real overlay" style="width: 100%; border-radius: 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.3);">
+                        </div>
+                    </div>
+                </div>
+
+                <p style="text-align: center; margin-top: 2rem; font-size: 1.1rem; color: #a0aec0;">
+                    🔴 Red = High attention | 🟢 Green/Blue = Low attention | Model focuses on eyes, nose, mouth edges
+                </p>
+            </div>
+        </div>
+
+        <!-- Slide 8: What It Does / Doesn't Do -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>Capabilities & Limitations</h2>
+                <div class="pros-cons-grid">
+                    <div class="pros-box">
+                        <h3 style="color: #43e97b; margin-bottom: 2rem;">✓ What It Does</h3>
+                        <ul class="feature-list" style="font-size: 1.1rem;">
+                            <li>Detects modern face swaps</li>
+                            <li>Identifies GAN-generated faces</li>
+                            <li>Spots facial reenactment</li>
+                            <li>Fast inference (&lt;2 seconds)</li>
+                            <li>High accuracy on quality images</li>
+                            <li>Provides confidence scores</li>
+                        </ul>
+                    </div>
+                    <div class="cons-box">
+                        <h3 style="color: #fa709a; margin-bottom: 2rem;">✗ What It Doesn't Do</h3>
+                        <ul class="feature-list" style="font-size: 1.1rem;">
+                            <li>Old GANs (pre-2019) - lower accuracy</li>
+                            <li>Video analysis (images only)</li>
+                            <li>Audio deepfakes</li>
+                            <li>Heavily compressed images</li>
+                            <li>Non-face content</li>
+                            <li>100% perfect accuracy</li>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 9: Results & Impact -->
+        <div class="slide">
+            <div class="slide-content">
+                <h2>Performance Metrics</h2>
+                <div style="display: flex; justify-content: space-around; margin: 3rem 0;">
+                    <div class="stat-box">
+                        <div class="stat-number">99.89%</div>
+                        <div class="stat-label">Training Accuracy</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">~95%</div>
+                        <div class="stat-label">Validation Accuracy</div>
+                    </div>
+                    <div class="stat-box">
+                        <div class="stat-number">94.5%</div>
+                        <div class="stat-label">F1-Score</div>
+                    </div>
+                </div>
+                <div class="card" style="margin-top: 3rem;">
+                    <h3 style="text-align: center; margin-bottom: 2rem;">Real-World Impact</h3>
+                    <div class="grid-3">
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">📰</div>
+                            <div style="font-size: 1.2rem; color: #a0aec0;">Media Verification</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">🔒</div>
+                            <div style="font-size: 1.2rem; color: #a0aec0;">Fraud Prevention</div>
+                        </div>
+                        <div style="text-align: center;">
+                            <div style="font-size: 3rem; margin-bottom: 1rem;">✓</div>
+                            <div style="font-size: 1.2rem; color: #a0aec0;">Trust Restoration</div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Slide 10: Conclusion -->
+        <div class="slide">
+            <div class="slide-content" style="text-align: center;">
+                <h1 style="margin-bottom: 2rem;">Thank You</h1>
+                <p class="subtitle">Building Trust in Digital Media</p>
+                
+                <div class="card" style="max-width: 800px; margin: 3rem auto;">
+                    <h3>Project Highlights</h3>
+                    <ul class="feature-list" style="text-align: left; margin-top: 2rem;">
+                        <li>99.89% training accuracy with ResNeXt-50</li>
+                        <li>Trained on 60,000+ diverse images</li>
+                        <li>Fast, accessible web interface</li>
+                        <li>Combating digital misinformation</li>
+                    </ul>
+                </div>
+
+                <div class="contact-section">
+                    <h3>Connect With Me</h3>
+                    <p style="font-size: 1.3rem; color: #a0aec0; margin: 1rem 0;">Kunal Dagar</p>
+                    <div class="contact-links">
+                        <a href="mailto:kunaldagar4298@gmail.com" class="contact-link">📧 Email</a>
+                        <a href="https://github.com/Kunaldgr" target="_blank" class="contact-link">💻 GitHub</a>
+                        <a href="https://www.linkedin.com/in/kunal-dagar-661161322/" target="_blank" class="contact-link">💼 LinkedIn</a>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <div class="slide-nav">
+        <span id="slideNum">1</span> / 10
+    </div>
+
+    <div class="controls">
+        <button id="prevBtn" onclick="changeSlide(-1)">← Prev</button>
+        <button id="nextBtn" onclick="changeSlide(1)">Next →</button>
+    </div>
+
+    <script>
+        let currentSlide = 0;
+        const slides = document.querySelectorAll('.slide');
+        const totalSlides = slides.length;
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const slideNum = document.getElementById('slideNum');
+
+        function showSlide(n) {
+            slides[currentSlide].classList.remove('active');
+            currentSlide = (n + totalSlides) % totalSlides;
+            slides[currentSlide].classList.add('active');
+            
+            prevBtn.disabled = currentSlide === 0;
+            nextBtn.disabled = currentSlide === totalSlides - 1;
+            slideNum.textContent = currentSlide + 1;
+        }
+
+        function changeSlide(direction) {
+            showSlide(currentSlide + direction);
+        }
+
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' && currentSlide > 0) changeSlide(-1);
+            else if (e.key === 'ArrowRight' && currentSlide < totalSlides - 1) changeSlide(1);
+        });
+
+        prevBtn.disabled = true;
+
+        let touchStartX = 0;
+        document.addEventListener('touchstart', (e) => {
+            touchStartX = e.changedTouches[0].screenX;
+        });
+
+        document.addEventListener('touchend', (e) => {
+            const touchEndX = e.changedTouches[0].screenX;
+            if (touchEndX < touchStartX - 50 && currentSlide < totalSlides - 1) changeSlide(1);
+            if (touchEndX > touchStartX + 50 && currentSlide > 0) changeSlide(-1);
+        });
+    </script>
+</body>
+</html>
